@@ -1,7 +1,8 @@
-#include "cJSON.h"
+#include "json.h"
 #include "raylib.h"
 #include "raymath.h"
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define SCREEN_WIDTH 800
@@ -130,35 +131,81 @@ static void draw_piece_cells(PieceType type, int rotation, int x, int y, Color c
     }
 }
 
-static bool parse_shape_grid(cJSON *grid, int piece_index, int rotation)
+static bool json_string_eq(const struct json_string_s *str, const char *key)
 {
-    if (!cJSON_IsArray(grid) || cJSON_GetArraySize(grid) != piece_size)
+    size_t key_len = strlen(key);
+    return str && str->string_size == key_len && strncmp(str->string, key, key_len) == 0;
+}
+
+static const struct json_value_s *json_object_get(const struct json_object_s *obj, const char *key)
+{
+    if (!obj)
+        return NULL;
+
+    for (struct json_object_element_s *el = obj->start; el; el = el->next) {
+        if (json_string_eq(el->name, key))
+            return el->value;
+    }
+
+    return NULL;
+}
+
+static const struct json_value_s *json_array_at(const struct json_array_s *arr, size_t index)
+{
+    if (!arr || index >= arr->length)
+        return NULL;
+
+    struct json_array_element_s *el = arr->start;
+    for (size_t i = 0; el && i < index; i++)
+        el = el->next;
+
+    return el ? el->value : NULL;
+}
+
+static int json_value_int(const struct json_value_s *value)
+{
+    struct json_number_s *num = json_value_as_number((struct json_value_s *)value);
+    if (!num)
+        return 0;
+    return atoi(num->number);
+}
+
+static bool parse_shape_grid(const struct json_value_s *grid, int piece_index, int rotation)
+{
+    struct json_array_s *array = json_value_as_array((struct json_value_s *)grid);
+    if (!array || array->length != (size_t)piece_size)
         return false;
 
     for (int row = 0; row < piece_size; row++) {
-        cJSON *line = cJSON_GetArrayItem(grid, row);
-        if (!cJSON_IsArray(line) || cJSON_GetArraySize(line) != piece_size)
+        const struct json_value_s *line_value = json_array_at(array, (size_t)row);
+        struct json_array_s *line = json_value_as_array((struct json_value_s *)line_value);
+        if (!line || line->length != (size_t)piece_size)
             return false;
 
         for (int col = 0; col < piece_size; col++) {
-            cJSON *cell = cJSON_GetArrayItem(line, col);
-            if (!cJSON_IsNumber(cell))
+            const struct json_value_s *cell = json_array_at(line, (size_t)col);
+            if (!cell || cell->type != json_type_number)
                 return false;
-            shapes[piece_index][rotation][row][col] = (char)cell->valueint;
+            shapes[piece_index][rotation][row][col] = (char)json_value_int(cell);
         }
     }
 
     return true;
 }
 
-static bool parse_piece_object(cJSON *piece, int piece_index)
+static bool parse_piece_object(const struct json_value_s *piece, int piece_index)
 {
-    cJSON *rotations = cJSON_GetObjectItemCaseSensitive(piece, "rotations");
-    if (!cJSON_IsArray(rotations) || cJSON_GetArraySize(rotations) != ROTATION_COUNT)
+    if (!piece || piece->type != json_type_object)
+        return false;
+
+    const struct json_value_s *rotations_value =
+        json_object_get(json_value_as_object((struct json_value_s *)piece), "rotations");
+    struct json_array_s *rotations = json_value_as_array((struct json_value_s *)rotations_value);
+    if (!rotations || rotations->length != ROTATION_COUNT)
         return false;
 
     for (int rotation = 0; rotation < ROTATION_COUNT; rotation++) {
-        cJSON *grid = cJSON_GetArrayItem(rotations, rotation);
+        const struct json_value_s *grid = json_array_at(rotations, (size_t)rotation);
         if (!parse_shape_grid(grid, piece_index, rotation))
             return false;
     }
@@ -174,40 +221,52 @@ bool load_shapes(void)
         return false;
     }
 
-    cJSON *root = cJSON_Parse(json_text);
+    struct json_value_s *root = json_parse(json_text, strlen(json_text));
     UnloadFileText(json_text);
     if (!root) {
         TraceLog(LOG_ERROR, "Failed to parse assets/shapes.json");
         return false;
     }
 
-    cJSON *size_item = cJSON_GetObjectItemCaseSensitive(root, "piece_size");
-    if (!cJSON_IsNumber(size_item) || size_item->valueint <= 0 ||
-        size_item->valueint > MAX_PIECE_SIZE) {
-        TraceLog(LOG_ERROR, "Invalid piece_size in assets/shapes.json");
-        cJSON_Delete(root);
-        return false;
+    bool ok = false;
+    if (root->type != json_type_object) {
+        TraceLog(LOG_ERROR, "Expected object in assets/shapes.json");
+        goto cleanup;
     }
-    piece_size = size_item->valueint;
 
-    cJSON *pieces = cJSON_GetObjectItemCaseSensitive(root, "pieces");
-    if (!cJSON_IsArray(pieces) || cJSON_GetArraySize(pieces) != PIECE_COUNT) {
+    struct json_object_s *object = json_value_as_object(root);
+    const struct json_value_s *size_value = json_object_get(object, "piece_size");
+    if (!size_value || size_value->type != json_type_number) {
+        TraceLog(LOG_ERROR, "Invalid piece_size in assets/shapes.json");
+        goto cleanup;
+    }
+
+    piece_size = json_value_int(size_value);
+    if (piece_size <= 0 || piece_size > MAX_PIECE_SIZE) {
+        TraceLog(LOG_ERROR, "Invalid piece_size in assets/shapes.json");
+        goto cleanup;
+    }
+
+    const struct json_value_s *pieces_value = json_object_get(object, "pieces");
+    struct json_array_s *pieces = json_value_as_array((struct json_value_s *)pieces_value);
+    if (!pieces || pieces->length != PIECE_COUNT) {
         TraceLog(LOG_ERROR, "Expected %d pieces in assets/shapes.json", PIECE_COUNT);
-        cJSON_Delete(root);
-        return false;
+        goto cleanup;
     }
 
     for (int i = 0; i < PIECE_COUNT; i++) {
-        cJSON *piece = cJSON_GetArrayItem(pieces, i);
-        if (!cJSON_IsObject(piece) || !parse_piece_object(piece, i)) {
+        const struct json_value_s *piece = json_array_at(pieces, (size_t)i);
+        if (!parse_piece_object(piece, i)) {
             TraceLog(LOG_ERROR, "Failed to parse piece at index %d", i);
-            cJSON_Delete(root);
-            return false;
+            goto cleanup;
         }
     }
 
-    cJSON_Delete(root);
-    return true;
+    ok = true;
+
+cleanup:
+    free(root);
+    return ok;
 }
 
 void shuffle_bag(void)

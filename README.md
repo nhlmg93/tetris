@@ -33,7 +33,7 @@ make fmt
 
 ## Assets
 
-All tetromino shapes live in `assets/shapes.json` and are loaded once at startup. JSON is parsed with [cJSON](https://github.com/DaveGamble/cJSON), vendored under `vendor/`.
+All tetromino shapes live in `assets/shapes.json` and are loaded once at startup. JSON is parsed with [json.h](https://github.com/sheredom/json.h), a single-header library vendored as `vendor/json.h`.
 
 ## Controls
 
