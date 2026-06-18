@@ -1,0 +1,89 @@
+# Game binary
+tetris
+
+# C build artifacts
+*.o
+*.obj
+*.so
+*.dll
+*.dylib
+*.a
+*.lib
+*.exe
+*.out
+*.elf
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+*.ilk
+*.gcda
+*.gcno
+*.gcov
+
+# Core dumps
+core
+core.*
+vgcore.*
+*.stackdump
+
+# Precompiled headers
+*.gch
+*.pch
+
+# Dependency files
+*.d
+*.dep
+
+# CMake (if ever added)
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile.cmake
+compile_commands.json
+build/
+_build/
+build-*/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Vim
+*.swo
+*.swp
+*~
+.ycm_extra_conf.py
+
+# Emacs
+*~
+#*#
+.#*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
