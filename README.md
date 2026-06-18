@@ -21,7 +21,7 @@ cd tetris
 make
 ```
 
-`make` downloads `json.h` from [stb](https://github.com/nhlmg93/stb) into `vendor/stb/` (requires `curl`).
+`make` downloads only `json.h` from [stb](https://github.com/nhlmg93/stb) into `vendor/` (requires `curl`).
 
 Run the game from the project root so shape assets can be loaded:
 
