@@ -1,6 +1,9 @@
 # Game binary
 tetris
 
+# Fetched at build time from stb_me
+vendor/
+
 # C build artifacts
 *.o
 *.obj

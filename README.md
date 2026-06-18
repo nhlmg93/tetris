@@ -16,12 +16,12 @@ sudo pacman -S raylib
 ## Build
 
 ```bash
-git clone --recurse-submodules https://github.com/nhlmg93/tetris.git
+git clone https://github.com/nhlmg93/tetris.git
 cd tetris
 make
 ```
 
-If you already cloned without submodules: `git submodule update --init`
+`make` downloads `json.h` from [stb_me](https://github.com/nhlmg93/stb_me) into `vendor/stb_me/` (requires `curl`).
 
 Run the game from the project root so shape assets can be loaded:
 
@@ -37,7 +37,7 @@ make fmt
 
 ## Assets
 
-All tetromino shapes live in `assets/shapes.json` and are loaded once at startup. JSON is parsed with [stb_me](https://github.com/nhlmg93/stb_me) `json.h` (git submodule at `vendor/stb_me`; define `JSON_IMPLEMENTATION` in one source file).
+All tetromino shapes live in `assets/shapes.json` and are loaded once at startup. JSON is parsed with [stb_me](https://github.com/nhlmg93/stb_me) `json.h` (fetched by `make`; define `JSON_IMPLEMENTATION` in one source file).
 
 ## Controls
 

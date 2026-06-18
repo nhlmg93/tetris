@@ -2,8 +2,17 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -Ivendor/stb_me
 LDFLAGS = -lraylib -lm -lpthread -ldl -lrt -lX11
 
-tetris: main.c
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+STB_ME_REPO = https://raw.githubusercontent.com/nhlmg93/stb_me
+STB_ME_REF = master
+VENDOR_DIR = vendor/stb_me
+JSON_H = $(VENDOR_DIR)/json.h
+
+tetris: main.c $(JSON_H)
+	$(CC) $(CFLAGS) -o $@ main.c $(LDFLAGS)
+
+$(JSON_H):
+	@mkdir -p $(VENDOR_DIR)
+	curl -fsSL $(STB_ME_REPO)/$(STB_ME_REF)/json.h -o $(JSON_H)
 
 SOURCES := $(wildcard *.c) $(wildcard *.h)
 
