@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11
+CFLAGS = -Wall -Wextra -std=c11 -Ivendor
 LDFLAGS = -lraylib -lm -lpthread -ldl -lrt -lX11
 
-tetris: main.c
+tetris: main.c vendor/cJSON.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 SOURCES := $(wildcard *.c) $(wildcard *.h)

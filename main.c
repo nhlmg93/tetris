@@ -1,3 +1,4 @@
+#include "cJSON.h"
 #include "raylib.h"
 #include "raymath.h"
 #include <assert.h>
@@ -14,7 +15,8 @@
 #define BOARD_X 80
 #define BOARD_Y ((SCREEN_HEIGHT - BOARD_HEIGHT) / 2)
 
-#define PIECE_SIZE 4
+#define MAX_PIECE_SIZE 4
+#define ROTATION_COUNT 4
 #define MAX_ENTITY 8
 #define E_NULL 0
 
@@ -62,36 +64,8 @@ EntityId alloc_entity(void)
 
 void free_entity(EntityId id) { entities[id].type = E_none; }
 
-static const char shapes[PIECE_COUNT][4][PIECE_SIZE][PIECE_SIZE] = {
-    {{{0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 0, 1, 0}, {0, 0, 1, 0}, {0, 0, 1, 0}, {0, 0, 1, 0}},
-     {{0, 0, 0, 0}, {0, 0, 0, 0}, {1, 1, 1, 1}, {0, 0, 0, 0}},
-     {{0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}}},
-    {{{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}}},
-    {{{0, 1, 0, 0}, {1, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 0, 0}, {0, 1, 1, 0}, {0, 1, 0, 0}, {0, 0, 0, 0}},
-     {{0, 0, 0, 0}, {1, 1, 1, 0}, {0, 1, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 0, 0}, {1, 1, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 0}}},
-    {{{0, 1, 1, 0}, {1, 1, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 0, 0}, {0, 1, 1, 0}, {0, 0, 1, 0}, {0, 0, 0, 0}},
-     {{0, 0, 1, 1}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{1, 0, 0, 0}, {1, 1, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 0}}},
-    {{{1, 1, 0, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 0, 1, 0}, {0, 1, 1, 0}, {0, 1, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 1, 0}, {1, 1, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 0, 0}, {1, 1, 0, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}}},
-    {{{1, 0, 0, 0}, {1, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 1, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 0}},
-     {{0, 0, 0, 0}, {1, 1, 1, 0}, {0, 0, 1, 0}, {0, 0, 0, 0}},
-     {{0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}}},
-    {{{0, 0, 1, 0}, {1, 1, 1, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-     {{0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 1, 0}, {0, 0, 0, 0}},
-     {{0, 0, 0, 0}, {1, 1, 1, 0}, {1, 0, 0, 0}, {0, 0, 0, 0}},
-     {{1, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 0, 0, 0}}},
-};
+static int piece_size = MAX_PIECE_SIZE;
+static char shapes[PIECE_COUNT][ROTATION_COUNT][MAX_PIECE_SIZE][MAX_PIECE_SIZE];
 
 int board[BOARD_ROWS][BOARD_COLS];
 
@@ -109,6 +83,7 @@ PieceType bag[PIECE_COUNT];
 int bag_index;
 
 void reset_game(void);
+bool load_shapes(void);
 void shuffle_bag(void);
 PieceType draw_from_bag(void);
 bool piece_fits(PieceType type, int rotation, int x, int y);
@@ -142,8 +117,8 @@ static void draw_cell(int col, int row, Color color)
 
 static void draw_piece_cells(PieceType type, int rotation, int x, int y, Color color)
 {
-    for (int r = 0; r < PIECE_SIZE; r++) {
-        for (int c = 0; c < PIECE_SIZE; c++) {
+    for (int r = 0; r < piece_size; r++) {
+        for (int c = 0; c < piece_size; c++) {
             if (!shapes[type][rotation][r][c])
                 continue;
             int board_col = x + c;
@@ -153,6 +128,86 @@ static void draw_piece_cells(PieceType type, int rotation, int x, int y, Color c
             draw_cell(board_col, board_row, color);
         }
     }
+}
+
+static bool parse_shape_grid(cJSON *grid, int piece_index, int rotation)
+{
+    if (!cJSON_IsArray(grid) || cJSON_GetArraySize(grid) != piece_size)
+        return false;
+
+    for (int row = 0; row < piece_size; row++) {
+        cJSON *line = cJSON_GetArrayItem(grid, row);
+        if (!cJSON_IsArray(line) || cJSON_GetArraySize(line) != piece_size)
+            return false;
+
+        for (int col = 0; col < piece_size; col++) {
+            cJSON *cell = cJSON_GetArrayItem(line, col);
+            if (!cJSON_IsNumber(cell))
+                return false;
+            shapes[piece_index][rotation][row][col] = (char)cell->valueint;
+        }
+    }
+
+    return true;
+}
+
+static bool parse_piece_object(cJSON *piece, int piece_index)
+{
+    cJSON *rotations = cJSON_GetObjectItemCaseSensitive(piece, "rotations");
+    if (!cJSON_IsArray(rotations) || cJSON_GetArraySize(rotations) != ROTATION_COUNT)
+        return false;
+
+    for (int rotation = 0; rotation < ROTATION_COUNT; rotation++) {
+        cJSON *grid = cJSON_GetArrayItem(rotations, rotation);
+        if (!parse_shape_grid(grid, piece_index, rotation))
+            return false;
+    }
+
+    return true;
+}
+
+bool load_shapes(void)
+{
+    char *json_text = LoadFileText("assets/shapes.json");
+    if (!json_text) {
+        TraceLog(LOG_ERROR, "Failed to load assets/shapes.json");
+        return false;
+    }
+
+    cJSON *root = cJSON_Parse(json_text);
+    UnloadFileText(json_text);
+    if (!root) {
+        TraceLog(LOG_ERROR, "Failed to parse assets/shapes.json");
+        return false;
+    }
+
+    cJSON *size_item = cJSON_GetObjectItemCaseSensitive(root, "piece_size");
+    if (!cJSON_IsNumber(size_item) || size_item->valueint <= 0 ||
+        size_item->valueint > MAX_PIECE_SIZE) {
+        TraceLog(LOG_ERROR, "Invalid piece_size in assets/shapes.json");
+        cJSON_Delete(root);
+        return false;
+    }
+    piece_size = size_item->valueint;
+
+    cJSON *pieces = cJSON_GetObjectItemCaseSensitive(root, "pieces");
+    if (!cJSON_IsArray(pieces) || cJSON_GetArraySize(pieces) != PIECE_COUNT) {
+        TraceLog(LOG_ERROR, "Expected %d pieces in assets/shapes.json", PIECE_COUNT);
+        cJSON_Delete(root);
+        return false;
+    }
+
+    for (int i = 0; i < PIECE_COUNT; i++) {
+        cJSON *piece = cJSON_GetArrayItem(pieces, i);
+        if (!cJSON_IsObject(piece) || !parse_piece_object(piece, i)) {
+            TraceLog(LOG_ERROR, "Failed to parse piece at index %d", i);
+            cJSON_Delete(root);
+            return false;
+        }
+    }
+
+    cJSON_Delete(root);
+    return true;
 }
 
 void shuffle_bag(void)
@@ -179,8 +234,8 @@ PieceType draw_from_bag(void)
 
 bool piece_fits(PieceType type, int rotation, int x, int y)
 {
-    for (int r = 0; r < PIECE_SIZE; r++) {
-        for (int c = 0; c < PIECE_SIZE; c++) {
+    for (int r = 0; r < piece_size; r++) {
+        for (int c = 0; c < piece_size; c++) {
             if (!shapes[type][rotation][r][c])
                 continue;
 
@@ -207,7 +262,7 @@ bool spawn_piece(void)
     piece->type = E_piece;
     piece->piece_type = next_piece_type;
     piece->rotation = 0;
-    piece->x = BOARD_COLS / 2 - 2;
+    piece->x = BOARD_COLS / 2 - piece_size / 2;
     piece->y = -1;
     next_piece_type = draw_from_bag();
 
@@ -224,8 +279,8 @@ void lock_piece(void)
 {
     Entity *piece = &entities[activePieceId];
 
-    for (int r = 0; r < PIECE_SIZE; r++) {
-        for (int c = 0; c < PIECE_SIZE; c++) {
+    for (int r = 0; r < piece_size; r++) {
+        for (int c = 0; c < piece_size; c++) {
             if (!shapes[piece->piece_type][piece->rotation][r][c])
                 continue;
 
@@ -367,8 +422,8 @@ void draw_piece(EntityId id)
 
 void draw_preview(PieceType type, int px, int py)
 {
-    for (int r = 0; r < PIECE_SIZE; r++) {
-        for (int c = 0; c < PIECE_SIZE; c++) {
+    for (int r = 0; r < piece_size; r++) {
+        for (int c = 0; c < piece_size; c++) {
             if (!shapes[type][0][r][c])
                 continue;
             Rectangle rect = {
@@ -442,6 +497,11 @@ int main(void)
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Tetris");
     SetTargetFPS(60);
+
+    if (!load_shapes()) {
+        CloseWindow();
+        return 1;
+    }
 
     reset_game();
 

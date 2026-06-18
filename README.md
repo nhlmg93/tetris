@@ -19,7 +19,7 @@ sudo pacman -S raylib
 make
 ```
 
-Run the game:
+Run the game from the project root so shape assets can be loaded:
 
 ```bash
 make run
@@ -30,6 +30,10 @@ Format the source:
 ```bash
 make fmt
 ```
+
+## Assets
+
+All tetromino shapes live in `assets/shapes.json` and are loaded once at startup. JSON is parsed with [cJSON](https://github.com/DaveGamble/cJSON), vendored under `vendor/`.
 
 ## Controls
 
