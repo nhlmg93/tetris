@@ -1,0 +1,3 @@
+[submodule "vendor/stb_me"]
+	path = vendor/stb_me
+	url = https://github.com/nhlmg93/stb_me.git

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -Ivendor
+CFLAGS = -Wall -Wextra -std=c11 -Ivendor/stb_me
 LDFLAGS = -lraylib -lm -lpthread -ldl -lrt -lX11
 
 tetris: main.c

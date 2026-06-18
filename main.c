@@ -1,3 +1,4 @@
+#define JSON_IMPLEMENTATION
 #include "json.h"
 #include "raylib.h"
 #include "raymath.h"
